@@ -1,0 +1,323 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>Speaker mining: この「キーワード」発言している人は誰？＠静岡市議会</title>
+
+    <!-- Core CSS - Include with every page -->
+    <link href="css/bootstrap.min.css" rel="stylesheet">
+    <link href="css/custom-style.css" rel="stylesheet">
+
+    <!-- SB Admin CSS - Include with every page -->
+    <link href="css/theme.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="css/font-awesome.min.css">
+    <style>
+        body{padding-top: 70px}
+        #word_cloud svg text{cursor: pointer}
+        #categories text, #categories rect{cursor: pointer}
+        p.acknowledge{padding: 6px 0}
+        div.what{
+            width: 100%;
+            text-align: center;
+            margin: 0 auto;
+            font-size: 16px;
+        }
+
+        div.what i{
+            font-size: 80px;
+            width: 100%;
+        }
+        div.what p.description{
+            padding: 12px 0;
+            font-size: 14px;
+            color: #444444;
+            line-height: 1.6;
+            text-align: left;
+        }
+
+    </style>
+
+</head>
+
+<body>
+<nav class="navbar navbar-default navbar-fixed-top" role="navigation">
+    <div class="container">
+        <div class="navbar-header">
+            <button type="button" class="navbar-toggle" data-toggle="collapse" data-target=".sidebar-collapse">
+                <span class="sr-only">Toggle navigation</span>
+                <span class="icon-bar"></span>
+                <span class="icon-bar"></span>
+                <span class="icon-bar"></span>
+            </button>
+            <a class="navbar-brand" href="index.html">Speaker miningこの「キーワード」発言している人は誰？＠静岡市議会</a>
+        </div>
+        <!-- /.navbar-header -->
+
+    </div>
+</nav>
+
+<div class="container">
+    <div class="row">
+        <div class="col-lg-9">
+            <div class="panel panel-default">
+                <div class="panel-heading">
+                    議会の発言の特徴的なキーワード
+                </div>
+                <div class="panel-body">
+                    <div id="word_cloud"></div>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-3">
+            <div class="panel panel-default">
+                <div class="panel-heading">
+                    キーワードについて重要度が高い人
+                </div>
+                <div class="panel-body">
+                    <div id="speakers">
+                        <div class="what">
+                            <i class="fa fa-question-circle-o" aria-hidden="true"></i><br>
+                            <p class="description">【議会の発言】や【静岡市Webサイトのカテゴリ別キーワード】から興味のあるキーワードを選択してください。
+                            議会でそのキーワードについての発言がより重要である（集中して発言している）と思われる発言者のランキングを表示します。</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+
+    </div>
+
+    <div class="panel panel-default">
+        <div class="panel-heading">
+            静岡市Webサイトのカテゴリ毎の特徴的なキーワード
+        </div>
+        <div class="panel-body">
+            <div id="categories"></div>
+        </div>
+    </div>
+
+
+    <!-- /.row -->
+    </div>
+    <!-- /#page-wrapper -->
+
+
+
+    <div class="footer" style="height: 30px;border-top: solid 1px #ddd">
+      <div class="container" style="margin: 0 30px">
+          <p class="acknowledge">このサイトのデータは<a href="http://asp.db-search.com/shizuoka-c/dsweb.cgi/"> 静岡市議会会議録</a>と、国立国会図書館の<a href="http://lab.ndl.go.jp/warp/index.html">WARP自治体検索API</a> から取得しています。</p>
+        <p class="text-muted">
+            <a rel="license" href="http://creativecommons.org/licenses/by/4.0/">
+                <img style="vertical-align: middle" alt="クリエイティブ・コモンズ・ライセンス" style="border-width:0" src="https://i.creativecommons.org/l/by/4.0/80x15.png" /></a>
+            この 作品 は <a rel="license" href="http://creativecommons.org/licenses/by/4.0/">クリエイティブ・コモンズ 表示 4.0 国際 ライセンスの下に提供されています。</a>
+        </p>
+      </div>
+    </div>
+    <!-- /#footer -->
+
+    <!-- Core Scripts - Include with every page -->
+    <script src="http://code.jquery.com/jquery-1.9.1.min.js"></script>
+    <script src="js/bootstrap.min.js"></script>
+    <script src="js/freelancer.min.js"></script>
+    <script src="js/jquery.metisMenu.js"></script>
+    <script src="//d3js.org/d3.v3.min.js"></script>
+    <script src="https://d3js.org/d3-queue.v3.min.js"></script>
+    <script src="js/d3.layout.cloud.js"></script>
+
+    <script>
+        d3.queue()
+                .defer(d3.json, "json/h28_top5_keywords.json")
+                .defer(d3.json, "json/h28_top_5_speaker.json")
+                .defer(d3.json, "json/shizuoka_15_feature_words.json")
+                .await(ready);
+        function text_limitter(text, max){
+            if(text.length > (max)){
+                var result_text = text.slice(0, max-1) + "…";
+                return result_text
+            }else{
+                return text
+            }
+        }
+
+        function ready(error, keyword, speaker, feature){
+            var margin = {top: 50, right: 30, bottom:50, left: 30, mf_left:150, mf_top:30, result_left:75},
+                width = 1200- margin.left - margin.right,
+                    height = 550 -margin.top -margin.bottom,
+                mf_width = 240, mf_height = 180 - margin.top,
+                    result_width = 230 - margin.result_left, result_height = 150,
+                    wc_width=800, wc_height=500;
+
+            var tmax = d3.max(keyword, function(d){return d[Object.keys(d)]}),
+                    mf_x = d3.scale.linear().range([0, mf_width - 100]),
+                    mf_y = d3.scale.ordinal().rangeBands([0, mf_height], 0.1),
+                    result_x = d3.scale.linear().range([10, result_width]),
+                    result_y = d3.scale.ordinal().rangeBands([0, result_height], 0.1),
+                    fontScale = d3.scale.linear().domain([0, tmax]).range([9, 75]),
+                    colorScale = d3.scale.category10(),
+                    barColor =  d3.scale.ordinal().range(['#002e73','#00479d','#448aca','#88abda','#3f6c9a','#00b7ee']),
+                    cat_map = {"sangyo":"産業", "saigai":"災害", "kankyo":"環境", "fukushi":"福祉", "kyoiku":"教育", "kanko": "観光"};
+
+            var category_svg = d3.select("#categories").append("svg")
+                    .attr("width", width)
+                    .attr("height", 350)
+                    .append("g");
+
+            var Category = function(ft,idx){
+                cat = (ft.doc).split(/[_\.]/).slice(-2,-1)[0];
+                this.data = ft.words;
+                this.data.forEach(function(d){
+                    d.key = Object.keys(d)[0];
+                    d.value = +d[Object.keys(d)[0]];
+                });
+
+                mf_x.domain([0.1, d3.max(this.data, function(d){return d.value}) ]);
+                mf_y.domain(this.data.map(function(d){return d.key}));
+
+                var category_group = category_svg.append("g")
+                        .attr("transform", "translate("+ ((idx) % 4) * (mf_width + 5) + "," +  (Math.floor((idx)/4) * (mf_height + margin.mf_top) + 20) +")");
+
+                category_group.selectAll(".bar"+idx)
+                        .data(this.data)
+                        .enter().append("rect")
+                        .attr("transform", "translate("+ margin.mf_left+",0)")
+                        .attr("class", "bar"+idx)
+                        .attr("fill", function(d, i){return barColor(i)})
+                        .attr("x", 0)
+                        .attr("width", function(d){return mf_x(d.value)})
+                        .attr("y", function(d, i){return mf_y(d.key)})
+                        .attr("height",  mf_y.rangeBand())
+                        .on("click", function(d){Speaker(d.key)});
+
+                category_group.selectAll(".txt" + idx)
+                        .data(this.data)
+                        .enter().append("text")
+                        .attr("transform", "translate("+ (margin.mf_left - 2) +",12)")
+                        .attr("class", "txt"+idx)
+                        .attr("y", function(d, i){return mf_y(d.key)})
+                        .attr("font-size", 14)
+                        .attr("text-anchor", "end")
+                        .attr("fill", "#448aca")
+                        .text(function (d) {return text_limitter(d.key, 7)})
+                        .on("click", function(d){Speaker(d.key)});
+
+                category_group
+                        .append("text")
+                        .attr("class", "headding"+idx)
+                        .attr("transform", "translate("+ margin.mf_left+",0)")
+                        .attr("fill", "#002e73")
+                        .attr("font-size", 16)
+                        .attr("font-weight", "bold")
+                        .text(cat_map[cat]);
+
+
+            };
+
+            for(idx in feature){
+                var category = new Category(feature[idx], idx);
+            }
+
+            var words = keyword.map(function(d){
+                var tfidf = d[Object.keys(d)[0]];
+                return {
+                    text: Object.keys(d),
+                    size: fontScale(tfidf)
+                }
+            });
+
+            d3.layout.cloud().size([wc_width, wc_height])
+                    .words(words)
+                    //.rotate(function(){return ~~(Math.random() * 2) *90})
+                    .fontSize(function (d) { return d.size})
+                    .on("end", draw_cloud)
+                    .start();
+
+            function draw_cloud(words){
+                var words_svg = d3.select("#word_cloud").append("svg")
+                        .attr("width", wc_width)
+                        .attr("height", wc_height);
+
+                words_svg.append("g")
+                        .attr("transform", "translate("+ wc_width/2 + ","+ wc_height/2 +")")
+                    .selectAll("text")
+                        .data(words)
+                    .enter().append("text")
+                        .style("font-size", function(d){return d.size + "px"})
+                        .style("fill", function (d) {
+                            return colorScale(d.size)
+                        })
+                        .attr("text-anchor", "middle")
+                        .attr("transform", function(d){
+                            return "translate(" + [d.x, d.y] + ")rotate(" + d.rotate + ")"})
+                        .text(function(d){return d.text})
+                        .on("click", function(d){ Speaker(this.innerHTML)});
+            }
+
+            var speaker_svg = d3.select("#speakers").append("svg")
+                                        .attr("width", 300)
+                                        .attr("height", 200);
+            var Speaker = function(w){
+                d3.select(".what").remove();
+                speaker_svg.selectAll("g").remove();
+                var data = speaker[w];
+                if(data.length != 0) {
+                    data.forEach(function(d){
+                        d.key = Object.keys(d)[0];
+                        d.value = +d[Object.keys(d)[0]];
+                    });
+
+                    result_x.domain([0, d3.max(data, function(d){return d.value})]);
+                    result_y.domain(data.map(function(d){return d.key}));
+
+                    speaker_svg.append("g").selectAll(".bar")
+                            .data(data)
+                            .enter().append("rect")
+                            .attr("transform", "translate("+ margin.result_left+",0)")
+                            .attr("class", "bar")
+                            .attr("fill", function(d,i){return barColor(i)})
+                            .attr("x", 0)
+                            .attr("width", function(d){return result_x(d.value)})
+                            .attr("y", function(d,i){return result_y(d.key)})
+                            .attr("height", result_y.rangeBand());
+
+                    speaker_svg.append("g").selectAll(".txt")
+                            .data(data)
+                            .enter().append("text")
+                            .attr("transform", "translate("+ (margin.result_left -2)+",18)")
+                            .attr("y", function(d, i){return result_y(d.key)})
+                            .attr("fill", "#448aca")
+                            .attr("font-size", 14)
+                            .attr("class", "txt")
+                            .attr("text-anchor", "end")
+                            .text(function(d){return d.key});
+
+                    speaker_svg.append("g").append("text")
+                            .attr("class", "txt")
+                            .attr("transform", "translate(4,"+ (result_height + 30) +")")
+                            .attr("fill", "#002e73")
+                            .attr("font-size", 12)
+                            .attr("font-weight", "bold")
+                            .text("["+ w + "]についての発言者（敬称略）");
+
+                }else{
+                    speaker_svg.append("g").append("text")
+                            .attr("font-size", 18)
+                            .attr("transform", "translate(20,108)")
+                            .text("発言者が見つかりません")
+                }
+
+            }
+
+        }
+
+
+    </script>
+
+
+</body>
+
+</html>

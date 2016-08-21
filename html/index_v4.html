@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>わんばんこ：ちょっと試しにやってみるページ</title>
+
+    <!-- Core CSS - Include with every page -->
+    <link href="css/bootstrap.min.css" rel="stylesheet">
+    <link href="css/custom-style.css" rel="stylesheet">
+
+    <!-- SB Admin CSS - Include with every page -->
+    <link href="css/small-business.css" rel="stylesheet">
+    <link rel="stylesheet" href="css/font-awesome.min.css">
+    <style>
+        svg text{cursor: pointer}
+    </style>
+
+</head>
+
+<body>
+    <nav class="navbar navbar-inverse navbar-fixed-top" role="navigation">
+        <div class="container">
+            <div class="navbar-header">
+                <button type="button" class="navbar-toggle" data-toggle="collapse" data-target=".sidebar-collapse">
+                    <span class="sr-only">Toggle navigation</span>
+                    <span class="icon-bar"></span>
+                    <span class="icon-bar"></span>
+                    <span class="icon-bar"></span>
+                </button>
+                <a class="navbar-brand" href="index.html">静岡市議会　この「キーワード」について発言している人サーチ</a>
+            </div>
+            <!-- /.navbar-header -->
+
+        </div>
+    </nav>
+
+    <div class="container">
+        <div id="word_cloud"></div>
+        <div id="categories"></div>
+        <div id="speakers"></div>
+
+        <!-- /.row -->
+    </div>
+    <!-- /#page-wrapper -->
+
+
+
+    <div class="footer" style="height: 30px;border-top: solid 1px #ddd">
+      <div class="container" style="margin: 0 30px">
+        <p class="text-muted">
+            <a rel="license" href="http://creativecommons.org/licenses/by/4.0/">
+                <img style="vertical-align: middle" alt="クリエイティブ・コモンズ・ライセンス" style="border-width:0" src="https://i.creativecommons.org/l/by/4.0/80x15.png" /></a>
+            この 作品 は <a rel="license" href="http://creativecommons.org/licenses/by/4.0/">クリエイティブ・コモンズ 表示 4.0 国際 ライセンスの下に提供されています。</a>
+        </p>
+      </div>
+    </div>
+    <!-- /#footer -->
+
+    <!-- Core Scripts - Include with every page -->
+    <script src="http://code.jquery.com/jquery-1.9.1.min.js"></script>
+    <script src="js/bootstrap.min.js"></script>
+    <script src="js/freelancer.min.js"></script>
+    <script src="js/jquery.metisMenu.js"></script>
+    <script src="//d3js.org/d3.v4.min.js"></script>
+    <script src="https://d3js.org/d3-array.v1.min.js"></script>
+    <script src="https://d3js.org/d3-collection.v0.1.min.js"></script>
+    <script src="https://d3js.org/d3-dispatch.v0.4.min.js"></script>
+    <script src="https://d3js.org/d3-dsv.v0.3.min.js"></script>
+    <script src="https://d3js.org/d3-request.v0.4.min.js"></script>
+    <script src="https://d3js.org/d3-scale.v1.min.js"></script>
+    <script src="https://d3js.org/d3-format.v1.min.js"></script>
+    <script src="https://d3js.org/d3-scale-chromatic.v1.min.js"></script>
+    <script src="js/d3.layout.cloud.js"></script>
+
+    <script>
+        d3.queue()
+                .defer(d3_request.json, "data/h28_top5_keywords.json")
+                .defer(d3_request.json, "data/h28_top_5_speaker.json")
+                .defer(d3_request.json, "data/shizuoka_15_feature_words.json")
+                .await(ready);
+        function ready(error, keyword, speaker, feature){
+            var margin = {top: 50, right: 30, bottom:50, left: 30},
+                width = 960 - margin.left - margin.right,
+                    height = 500 -margin.top -margin.bottom,
+                mf_width = 200, mf_height = 200;
+
+            var tmax = d3.max(keyword, function(d){return d[Object.keys(d)]});
+            var mf_x = d3.scaleLinear().range([0, mf_width]);
+            var mf_y = d3.scaleOrdinal().range([mf_height, 0]);
+            var fontScale = d3.scaleLinear().domain([0, tmax]).range([9, 80]);
+            var colorScale = d3.scaleOrdinal(d3.schemeAccent);
+
+            var category_svg = d3.select("#categories").append("svg")
+                    .attr("width", width)
+                    .attr("height", height)
+                    .append("g")
+                    .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
+
+            var category = function(dct){
+                cat = (dct.doc).split(/[_\.]/).slice(-2,-1)[0];
+
+                data = dct.words;
+                data.forEach(function(d){
+                    d.key = Object.keys(d)[0];
+                    d.value = +d[Object.keys(d)[0]];
+                });
+                mf_x.domain([0, d3.max(data, function(d){return d.value}) ]);
+                //mf_y.domain(data.map(function(d){return d.key}));
+                mf_y.domain(["町字", "東地区", "イメージカラ", "ロゴマーク", "中勘助"]);
+                console.log(data);
+                console.log(mf_y("ロゴマーク"));
+                category_svg.selectAll(".bar")
+                    .data(data)
+                        .enter().append("rect")
+                        .attr("class", "bar")
+                        .attr("x", function(d){return mf_x(d.value)})
+                        .attr("width", function(d){return mf_x(d.value)})
+                        .attr("y", function(d){return mf_y(d.key)})
+                        .attr("height", function(d){return 10});
+
+                //rangeBandがv4でどのようにリプレイスされたかわからないので、heightはひとまず固定の値に
+            };
+
+
+            var cat = new category(feature[0]);
+
+
+
+            var words = keyword.map(function(d){
+                var tfidf = d[Object.keys(d)[0]];
+                return {
+                    text: Object.keys(d),
+                    size: fontScale(tfidf)
+                }
+            });
+
+            d3.layout.cloud().size([900, 600])
+                    .words(words)
+                    //.rotate(function(){return ~~(Math.random() * 2) *90})
+                    .fontSize(function (d) { return d.size})
+                    .on("end", draw_cloud)
+                    .start();
+
+            function draw_cloud(words){
+                var words_svg = d3.select("#word_cloud").append("svg")
+                        .attr("width", 900)
+                        .attr("height", 600);
+
+                words_svg.append("g")
+                        .attr("transform", "translate(450, 300)")
+                    .selectAll("text")
+                        .data(words)
+                    .enter().append("text")
+                        .style("font-size", function(d){return d.size + "px"})
+                        .style("fill", function (d) {
+                            return colorScale(d.size)
+                        })
+                        .attr("text-anchor", "middle")
+                        .attr("transform", function(d){
+                            return "translate(" + [d.x, d.y] + ")rotate(" + d.rotate + ")"})
+                        .text(function(d){return d.text})
+                        .on("click", function(d){ console.log(this)});
+            }
+
+
+
+
+        }
+
+
+    </script>
+
+
+</body>
+
+</html>
